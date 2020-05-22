@@ -3,67 +3,105 @@ using Xunit;
 namespace ExCSS.Tests
 {
     using ExCSS;
+    using System;
+    using System.Collections.Generic;
     using System.Linq;
 
-	//[TestFixture]
-	public class CssCasesTests : CssConstructionFunctions
-	{
+    //[TestFixture]
+    public class CssCasesTests : CssConstructionFunctions
+    {
         static Stylesheet ParseSheet(string text)
         {
             return ParseStyleSheet(text, true, true, true, true, true);
         }
 
-		[Fact]//[Test]
+        [Fact]//[Test]
         public void StyleSheetAtNamespace()
-		{
-			var sheet = ParseSheet(@"@namespace svg ""http://www.w3.org/2000/svg"";");
-			Assert.Equal(1, sheet.Rules.Length);
-		}
+        {
+            var sheet = ParseSheet(@"@namespace svg ""http://www.w3.org/2000/svg"";");
+            Assert.Equal(1, sheet.Rules.Length);
+        }
 
-		[Fact]//[Test]
+        [Fact]//[Test]
         public void StyleSheetCharsetLinebreak()
-		{
-			var sheet = ParseSheet(@"@charset
+        {
+            var sheet = ParseSheet(@"@charset
     ""UTF-8""
     ;");
-			Assert.Equal(1, sheet.Rules.Length);
+            Assert.Equal(1, sheet.Rules.Length);
 
-			foreach (var rule in sheet.Rules)
-				Assert.Equal(@"UTF-8", ((CharsetRule)rule).CharacterSet);
-		}
+            foreach (var rule in sheet.Rules)
+                Assert.Equal(@"UTF-8", ((CharsetRule)rule).CharacterSet);
+        }
 
-		[Fact]//[Test]
+        [Fact]//[Test]
         public void StyleSheetCharset()
-		{
-			var sheet = ParseSheet(@"@charset ""UTF-8"";       /* Set the encoding of the style sheet to Unicode UTF-8 */
+        {
+            var sheet = ParseSheet(@"@charset ""UTF-8"";       /* Set the encoding of the style sheet to Unicode UTF-8 */
 @charset 'iso-8859-15'; /* Set the encoding of the style sheet to Latin-9 (Western European languages, with euro sign) */
 ");
-			Assert.Equal(2, sheet.Rules.Length);
+            Assert.Equal(2, sheet.Rules.Length);
             Assert.Equal(@"UTF-8", ((CharsetRule)sheet.Rules[0]).CharacterSet);
             Assert.Equal(@"iso-8859-15", ((CharsetRule)sheet.Rules[1]).CharacterSet);
-		}
+        }
 
-		[Fact]//[Test]
+        [Fact]//[Test]
         public void StyleSheetColonSpace()
-		{
-			var sheet = ParseSheet(@"a {
+        {
+            var sheet = ParseSheet(@"a {
     margin  : auto;
     padding : 0;
 }");
-			Assert.Equal(1, sheet.Rules.Length);
+            Assert.Equal(1, sheet.Rules.Length);
 
-			foreach (var rule in sheet.Rules)
-			{
-				Assert.Equal(@"a", ((StyleRule)rule).SelectorText);
-				Assert.Equal(@"auto", ((StyleRule)rule).Style["margin"]);
-				Assert.Equal(@"0", ((StyleRule)rule).Style["padding"]);
-			}
-		}
+            foreach (var rule in sheet.Rules)
+            {
+                Assert.Equal(@"a", ((StyleRule)rule).SelectorText);
+                Assert.Equal(@"auto", ((StyleRule)rule).Style["margin"]);
+                Assert.Equal(@"0", ((StyleRule)rule).Style["padding"]);
+            }
+        }
 
-		[Fact]//[Test]
+        [Fact]//[Test]
+        public void GetClassesFromSelector()
+        {
+            var sheet = ParseSheet(@"a {
+    margin  : auto;
+    padding : 0;
+}
+
+a.red.green.brown, h1.red.green.brown { }
+
+a.red.green.brown h1.red.green.brown { }
+");
+            Assert.Equal(3, sheet.Rules.Length);
+
+            // IEnumerable<ISelector>
+            var rule = ((StyleRule)sheet.Rules[1]).Selector;
+
+            var classes = new List<string>();
+            if (rule is IEnumerable<ISelector> selectors)
+            {
+                foreach (var selector in selectors)
+                {
+                    if (selector.Text.StartsWith("."))
+                    {
+                        var classParts = selector.Text.Split(new char[] { '.' }, StringSplitOptions.RemoveEmptyEntries);
+
+                        classes.AddRange(classParts.ToList());
+                    }
+                }
+            }
+            else
+            {
+
+            }
+        }
+
+        [Fact]//[Test]
         public void StyleSheetCommaAttribute()
-		{
-			var sheet = ParseSheet(@".foo[bar=""baz,quz""] {
+        {
+            var sheet = ParseSheet(@".foo[bar=""baz,quz""] {
   foobar: 123;
 }
 
@@ -102,7 +140,7 @@ namespace ExCSS.Tests
 #foo[qux=' , '] {
   foobar: 345;
 }");
-			Assert.Equal(5, sheet.Rules.Length);
+            Assert.Equal(5, sheet.Rules.Length);
 
             Assert.Equal(@".foo[bar=""baz,quz""]", ((StyleRule)sheet.Rules[0]).SelectorText);
             Assert.Equal(@"123", ((StyleRule)sheet.Rules[0]).Style["foobar"]);
@@ -118,12 +156,12 @@ namespace ExCSS.Tests
 
             Assert.Equal(@"#foo[foo=""""],#foo[bar="" ""],#foo[bar="",""],#foo[bar="", ""],#foo[bar="" ,""],#foo[bar="" , ""],#foo[baz=""""],#foo[qux="" ""],#foo[qux="",""],#foo[qux="", ""],#foo[qux="" ,""],#foo[qux="" , ""]", ((StyleRule)sheet.Rules[4]).SelectorText);
             Assert.Equal(@"345", ((StyleRule)sheet.Rules[4]).Style["foobar"]);
-		}
+        }
 
-		[Fact]//[Test]
+        [Fact]//[Test]
         public void StyleSheetCommaSelectorFunction()
-		{
-			var sheet = ParseSheet(@".foo:matches(.bar,.baz),
+        {
+            var sheet = ParseSheet(@".foo:matches(.bar,.baz),
 .foo:matches(.bar, .baz),
 .foo:matches(.bar , .baz),
 .foo:matches(.bar ,.baz) {
@@ -144,17 +182,17 @@ namespace ExCSS.Tests
 .foo:matches(.bar, .baz,),
 .foo:matches(,.bar , .baz) ", ((StyleRule)sheet.Rules[1]).SelectorText);
             Assert.Equal(@"anothervalue", ((StyleRule)sheet.Rules[1]).Style["anotherprop"]);
-		}
+        }
 
-		[Fact]//[Test]
+        [Fact]//[Test]
         public void StyleSheetCommentIn()
-		{
-			var sheet = ParseSheet(@"a {
+        {
+            var sheet = ParseSheet(@"a {
     color/**/: 12px;
     padding/*4815162342*/: 1px /**/ 2px /*13*/ 3px;
     border/*\**/: solid; border-top/*\**/: none\9;
 }");
-			Assert.Equal(1, sheet.Rules.Length);
+            Assert.Equal(1, sheet.Rules.Length);
             var rule = sheet.Rules[0];
 
             Assert.Equal(@"a", ((StyleRule)rule).SelectorText);
@@ -162,28 +200,28 @@ namespace ExCSS.Tests
             Assert.Equal(@"1px 2px 3px", ((StyleRule)rule).Style["padding"]);
             Assert.Equal(@"solid", ((StyleRule)rule).Style["border"]);
             Assert.Equal("none\t", ((StyleRule)rule).Style["border-top"]);
-		}
+        }
 
-		[Fact]//[Test]
+        [Fact]//[Test]
         public void StyleSheetCommentUrl()
-		{
-			var sheet = ParseSheet(@"/* http://foo.com/bar/baz.html */
+        {
+            var sheet = ParseSheet(@"/* http://foo.com/bar/baz.html */
 /**/
 
 foo { /*/*/
   /* something */
   bar: baz; /* http://foo.com/bar/baz.html */
 }");
-			Assert.Equal(1, sheet.Rules.Length);
+            Assert.Equal(1, sheet.Rules.Length);
 
             Assert.Equal(@"foo", ((StyleRule)sheet.Rules[0]).SelectorText);
             Assert.Equal(@"baz", ((StyleRule)sheet.Rules[0]).Style["bar"]);
-		}
+        }
 
-		[Fact]//[Test]
+        [Fact]//[Test]
         public void StyleSheetComment()
-		{
-			var sheet = ParseSheet(@"/* 1 */
+        {
+            var sheet = ParseSheet(@"/* 1 */
 
 head, /* footer, */body/*, nav */ { /* 2 */
   /* 3 */
@@ -192,35 +230,35 @@ head, /* footer, */body/*, nav */ { /* 2 */
 } /* 5 */
 
 /* 6 */");
-			Assert.Equal(1, sheet.Rules.Length);
+            Assert.Equal(1, sheet.Rules.Length);
 
             Assert.Equal(@"head,body", ((StyleRule)sheet.Rules[0]).SelectorText);
             Assert.Equal(@"""bar""", ((StyleRule)sheet.Rules[0]).Style["foo"]);
-		}
+        }
 
-		[Fact]//[Test]
+        [Fact]//[Test]
         public void StyleSheetCustomMediaLinebreak()
-		{
-			var sheet = ParseSheet(@"@custom-media
+        {
+            var sheet = ParseSheet(@"@custom-media
     --test
     (min-width: 200px)
 ;");
-			Assert.Equal(1, sheet.Rules.Length);
-		}
+            Assert.Equal(1, sheet.Rules.Length);
+        }
 
-		[Fact]//[Test]
+        [Fact]//[Test]
         public void StyleSheetCustomMedia()
-		{
-			var sheet = ParseSheet(@"@custom-media --narrow-window (max-width: 30em);
+        {
+            var sheet = ParseSheet(@"@custom-media --narrow-window (max-width: 30em);
 @custom-media --wide-window screen and (min-width: 40em);
 ");
-			Assert.Equal(2, sheet.Rules.Length);
-		}
+            Assert.Equal(2, sheet.Rules.Length);
+        }
 
-		[Fact]//[Test]
+        [Fact]//[Test]
         public void StyleSheetDocumentLinebreak()
-		{
-			var sheet = ParseSheet(@"@document
+        {
+            var sheet = ParseSheet(@"@document
     url-prefix()
     {
 
@@ -229,13 +267,13 @@ head, /* footer, */body/*, nav */ { /* 2 */
         }
 
     }");
-			Assert.Equal(1, sheet.Rules.Length);
-		}
+            Assert.Equal(1, sheet.Rules.Length);
+        }
 
-		[Fact]//[Test]
+        [Fact]//[Test]
         public void StyleSheetDocument()
-		{
-			var sheet = ParseSheet(@"@-moz-document url-prefix() {
+        {
+            var sheet = ParseSheet(@"@-moz-document url-prefix() {
   /* ui above */
   .ui-select .ui-btn select {
     /* ui inside */
@@ -246,20 +284,20 @@ head, /* footer, */body/*, nav */ { /* 2 */
     height: .9em;
   }
 }");
-			Assert.Equal(1, sheet.Rules.Length);
-		}
+            Assert.Equal(1, sheet.Rules.Length);
+        }
 
-		[Fact]//[Test]
-		public void StyleSheetEmpty()
-		{
-			var sheet = ParseSheet(@"");
-			Assert.Equal(0, sheet.Rules.Length);
-		}
+        [Fact]//[Test]
+        public void StyleSheetEmpty()
+        {
+            var sheet = ParseSheet(@"");
+            Assert.Equal(0, sheet.Rules.Length);
+        }
 
-		[Fact]//[Test]
+        [Fact]//[Test]
         public void StyleSheetEscapes()
-		{
-			var sheet = ParseSheet(@"/* tests compressed for easy testing */
+        {
+            var sheet = ParseSheet(@"/* tests compressed for easy testing */
 /* http://mathiasbynens.be/notes/css-escapes */
 /* will match elements with class="":`("" */
 .\3A \`\({}
@@ -313,7 +351,7 @@ li{background:orange;}
 
 /* css-parse does not yet pass this test */
 /*#\{\}{background:lime;}*/");
-			Assert.Equal(42, sheet.Rules.Length);
+            Assert.Equal(42, sheet.Rules.Length);
 
             Assert.Equal(@".:`(", ((StyleRule)sheet.Rules[0]).SelectorText);
             Assert.Equal(@".1a2b3c", ((StyleRule)sheet.Rules[1]).SelectorText);
@@ -394,12 +432,12 @@ li{background:orange;}
             Assert.Equal(@"lime", ((StyleRule)sheet.Rules[40]).Style["background"]);
             Assert.Equal(@"#f+o+o", ((StyleRule)sheet.Rules[41]).SelectorText);
             Assert.Equal(@"lime", ((StyleRule)sheet.Rules[41]).Style["background"]);
-		}
+        }
 
-		[Fact]//[Test]
+        [Fact]//[Test]
         public void StyleSheetFontFaceLinebreak()
-		{
-			var sheet = ParseSheet(@"@font-face
+        {
+            var sheet = ParseSheet(@"@font-face
 
        {
   font-family: ""Bitstream Vera Serif Bold"";
@@ -409,16 +447,16 @@ li{background:orange;}
 body {
   font-family: ""Bitstream Vera Serif Bold"", serif;
 }");
-			Assert.Equal(2, sheet.Rules.Length);
+            Assert.Equal(2, sheet.Rules.Length);
 
             Assert.Equal(@"body", ((StyleRule)sheet.Rules[1]).SelectorText);
             Assert.Equal(@"""Bitstream Vera Serif Bold"", serif", ((StyleRule)sheet.Rules[1]).Style["font-family"]);
-		}
+        }
 
-		[Fact]//[Test]
+        [Fact]//[Test]
         public void StyleSheetFontFace()
-		{
-			var sheet = ParseSheet(@"@font-face {
+        {
+            var sheet = ParseSheet(@"@font-face {
   font-family: ""Bitstream Vera Serif Bold"";
   src: url(""http://developer.mozilla.org/@api/deki/files/2934/=VeraSeBd.ttf"");
 }
@@ -426,56 +464,56 @@ body {
 body {
   font-family: ""Bitstream Vera Serif Bold"", serif;
 }");
-			Assert.Equal(2, sheet.Rules.Length);
+            Assert.Equal(2, sheet.Rules.Length);
 
             Assert.Equal(@"body", ((StyleRule)sheet.Rules[1]).SelectorText);
             Assert.Equal(@"""Bitstream Vera Serif Bold"", serif", ((StyleRule)sheet.Rules[1]).Style["font-family"]);
-		}
+        }
 
-		[Fact]//[Test]
+        [Fact]//[Test]
         public void StyleSheetHostLinebreak()
-		{
-			var sheet = ParseSheet(@"@host
+        {
+            var sheet = ParseSheet(@"@host
     {
         :scope { color: white; }
     }");
-			Assert.Equal(1, sheet.Rules.Length);
-		}
+            Assert.Equal(1, sheet.Rules.Length);
+        }
 
-		[Fact]//[Test]
+        [Fact]//[Test]
         public void StyleSheetHost()
-		{
-			var sheet = ParseSheet(@"@host {
+        {
+            var sheet = ParseSheet(@"@host {
   :scope {
     display: block;
   }
 }");
-			Assert.Equal(1, sheet.Rules.Length);
-		}
+            Assert.Equal(1, sheet.Rules.Length);
+        }
 
-		[Fact]//[Test]
+        [Fact]//[Test]
         public void StyleSheetImportLinebreak()
-		{
-			var sheet = ParseSheet(@"@import
+        {
+            var sheet = ParseSheet(@"@import
     url(test.css)
     screen
     ;");
-			Assert.Equal(1, sheet.Rules.Length);
+            Assert.Equal(1, sheet.Rules.Length);
 
             Assert.Equal(@"test.css", ((ImportRule)sheet.Rules[0]).Href);
-		}
+        }
 
-		[Fact]//[Test]
+        [Fact]//[Test]
         public void StyleSheetImportMessed()
-		{
-			var sheet = ParseSheet(@"
+        {
+            var sheet = ParseSheet(@"
    @import url(""fineprint.css"") print;
   @import url(""bluish.css"") projection, tv;
       @import 'custom.css';
   @import ""common.css"" screen, projection  ;
 
   @import url('landscape.css') screen and (orientation:landscape);");
-			Assert.Equal(5, sheet.Rules.Length);
+            Assert.Equal(5, sheet.Rules.Length);
 
             Assert.Equal(@"fineprint.css", ((ImportRule)sheet.Rules[0]).Href);
             Assert.Equal(@"print", ((ImportRule)sheet.Rules[0]).Media.MediaText);
@@ -491,17 +529,17 @@ body {
 
             Assert.Equal(@"landscape.css", ((ImportRule)sheet.Rules[4]).Href);
             Assert.Equal(@"screen and (orientation: landscape)", ((ImportRule)sheet.Rules[4]).Media.MediaText);
-		}
+        }
 
-		[Fact]//[Test]
+        [Fact]//[Test]
         public void StyleSheetImport()
-		{
-			var sheet = ParseSheet(@"@import url(""fineprint.css"") print;
+        {
+            var sheet = ParseSheet(@"@import url(""fineprint.css"") print;
 @import url(""bluish.css"") projection, tv;
 @import 'custom.css';
 @import ""common.css"" screen, projection;
 @import url('landscape.css') screen and (orientation:landscape);");
-			Assert.Equal(5, sheet.Rules.Length);
+            Assert.Equal(5, sheet.Rules.Length);
 
             Assert.Equal(@"fineprint.css", ((ImportRule)sheet.Rules[0]).Href);
             Assert.Equal(@"print", ((ImportRule)sheet.Rules[0]).Media.MediaText);
@@ -517,12 +555,12 @@ body {
 
             Assert.Equal(@"landscape.css", ((ImportRule)sheet.Rules[4]).Href);
             Assert.Equal(@"screen and (orientation: landscape)", ((ImportRule)sheet.Rules[4]).Media.MediaText);
-		}
+        }
 
-		[Fact]//[Test]
+        [Fact]//[Test]
         public void StyleSheetKeyframesAdvanced()
-		{
-			var sheet = ParseSheet(@"@keyframes advanced {
+        {
+            var sheet = ParseSheet(@"@keyframes advanced {
   top {
     opacity[sqrt]: 0;
   }
@@ -535,13 +573,13 @@ body {
     opacity: 1;
   }
 }");
-			Assert.Equal(1, sheet.Rules.Length);
-		}
+            Assert.Equal(1, sheet.Rules.Length);
+        }
 
-		[Fact]//[Test]
+        [Fact]//[Test]
         public void StyleSheetKeyframesComplex()
-		{
-			var sheet = ParseSheet(@"@keyframes foo {
+        {
+            var sheet = ParseSheet(@"@keyframes foo {
   0% { top: 0; left: 0 }
   30.50% { top: 50px }
   .68% ,
@@ -549,49 +587,49 @@ body {
       , 85% { left: 50px }
   100% { top: 100px; left: 100% }
 }");
-			Assert.Equal(1, sheet.Rules.Length);
-		}
+            Assert.Equal(1, sheet.Rules.Length);
+        }
 
-		[Fact]//[Test]
+        [Fact]//[Test]
         public void StyleSheetKeyframesLinebreak()
-		{
-			var sheet = ParseSheet(@"@keyframes
+        {
+            var sheet = ParseSheet(@"@keyframes
     test
     {
         from { opacity: 1; }
         to { opacity: 0; }
     }
 ");
-			Assert.Equal(1, sheet.Rules.Length);
-		}
+            Assert.Equal(1, sheet.Rules.Length);
+        }
 
-		[Fact]//[Test]
+        [Fact]//[Test]
         public void StyleSheetKeyframesMessed()
-		{
-			var sheet = ParseSheet(@"@keyframes fade {from
+        {
+            var sheet = ParseSheet(@"@keyframes fade {from
   {opacity: 0;
      }
 to
   {
      opacity: 1;}}");
-			Assert.Equal(1, sheet.Rules.Length);
-		}
+            Assert.Equal(1, sheet.Rules.Length);
+        }
 
-		[Fact]//[Test]
+        [Fact]//[Test]
         public void StyleSheetKeyframesVendor()
-		{
-			var sheet = ParseSheet(@"@-webkit-keyframes fade {
+        {
+            var sheet = ParseSheet(@"@-webkit-keyframes fade {
   from { opacity: 0 }
   to { opacity: 1 }
 }
 ");
-			Assert.Equal(1, sheet.Rules.Length);
-		}
+            Assert.Equal(1, sheet.Rules.Length);
+        }
 
-		[Fact]//[Test]
+        [Fact]//[Test]
         public void StyleSheetKeyframes()
-		{
-			var sheet = ParseSheet(@"@keyframes fade {
+        {
+            var sheet = ParseSheet(@"@keyframes fade {
   /* from above */
   from {
     /* from inside */
@@ -604,13 +642,13 @@ to
     opacity: 1;
   }
 }");
-			Assert.Equal(1, sheet.Rules.Length);
-		}
+            Assert.Equal(1, sheet.Rules.Length);
+        }
 
-		[Fact]//[Test]
+        [Fact]//[Test]
         public void StyleSheetMediaLinebreak()
-		{
-			var sheet = ParseSheet(@"@media
+        {
+            var sheet = ParseSheet(@"@media
 
 (
     min-width: 300px
@@ -618,7 +656,7 @@ to
 {
     .test { width: 100px; }
 }");
-			Assert.Equal(1, sheet.Rules.Length);
+            Assert.Equal(1, sheet.Rules.Length);
             var rule = (MediaRule)sheet.Rules[0];
 
             Assert.Equal(@"(min-width: 300px)", rule.Media.MediaText);
@@ -627,12 +665,12 @@ to
             var subrule = rule.Rules[0];
             Assert.Equal(@".test", ((StyleRule)subrule).SelectorText);
             Assert.Equal(@"100px", ((StyleRule)subrule).Style["width"]);
-		}
+        }
 
-		[Fact]//[Test]
+        [Fact]//[Test]
         public void StyleSheetMediaMessed()
-		{
-			var sheet = ParseSheet(@"@media screen, projection{ html
+        {
+            var sheet = ParseSheet(@"@media screen, projection{ html
 
   {
 background: #fffef0;
@@ -659,7 +697,7 @@ background: #fffef0;
               border: 0.5pt solid #666;
               }
 }");
-			Assert.Equal(2, sheet.Rules.Length);
+            Assert.Equal(2, sheet.Rules.Length);
 
             {
                 var rule = sheet.Rules[0];
@@ -700,12 +738,12 @@ background: #fffef0;
                     Assert.Equal(@"0.5pt solid #666", ((StyleRule)subrule).Style["border"]);
                 }
             }
-		}
+        }
 
-		[Fact]//[Test]
+        [Fact]//[Test]
         public void StyleSheetMedia()
-		{
-			var sheet = ParseSheet(@"@media screen, projection {
+        {
+            var sheet = ParseSheet(@"@media screen, projection {
   /* html above */
   html {
     /* html inside */
@@ -731,7 +769,7 @@ background: #fffef0;
     border: 0.5pt solid #666;
   }
 }");
-			Assert.Equal(2, sheet.Rules.Length);
+            Assert.Equal(2, sheet.Rules.Length);
 
             Assert.Equal(@"screen, projection", ((MediaRule)sheet.Rules[0]).Media.MediaText);
             Assert.Equal(2, ((MediaRule)sheet.Rules[0]).Rules.Length);
@@ -745,7 +783,7 @@ background: #fffef0;
             Assert.Equal(@"0 auto", ((StyleRule)((MediaRule)sheet.Rules[0]).Rules[1]).Style["margin"]);
 
             Assert.Equal(@"print", ((MediaRule)sheet.Rules[1]).Media.MediaText);
-			Assert.Equal(2, ((MediaRule)sheet.Rules[1]).Rules.Length);
+            Assert.Equal(2, ((MediaRule)sheet.Rules[1]).Rules.Length);
 
             Assert.Equal(@"html", ((StyleRule)((MediaRule)sheet.Rules[1]).Rules[0]).SelectorText);
             Assert.Equal(@"#fff", ((StyleRule)((MediaRule)sheet.Rules[1]).Rules[0]).Style["background"]);
@@ -754,12 +792,12 @@ background: #fffef0;
             Assert.Equal(@"body", ((StyleRule)((MediaRule)sheet.Rules[1]).Rules[1]).SelectorText);
             Assert.Equal(@"1in", ((StyleRule)((MediaRule)sheet.Rules[1]).Rules[1]).Style["padding"]);
             Assert.Equal(@"0.5pt solid #666", ((StyleRule)((MediaRule)sheet.Rules[1]).Rules[1]).Style["border"]);
-		}
+        }
 
-		[Fact]//[Test]
+        [Fact]//[Test]
         public void StyleSheetMessedUp()
-		{
-			var sheet = ParseSheet(@"body { foo
+        {
+            var sheet = ParseSheet(@"body { foo
   :
   'bar' }
 
@@ -775,7 +813,7 @@ background: #fffef0;
      baz
      }
 ");
-			Assert.Equal(3, sheet.Rules.Length);
+            Assert.Equal(3, sheet.Rules.Length);
 
             Assert.Equal(@"body", ((StyleRule)sheet.Rules[0]).SelectorText);
             Assert.Equal(@"""bar""", ((StyleRule)sheet.Rules[0]).Style["foo"]);
@@ -787,58 +825,58 @@ background: #fffef0;
             Assert.Equal(@"body", ((StyleRule)sheet.Rules[2]).SelectorText);
             Assert.Equal(@"bar", ((StyleRule)sheet.Rules[2]).Style["foo"]);
             Assert.Equal(@"baz", ((StyleRule)sheet.Rules[2]).Style["bar"]);
-		}
+        }
 
-		[Fact]//[Test]
+        [Fact]//[Test]
         public void StyleSheetNamespaceLinebreak()
-		{
-			var sheet = ParseSheet(@"@namespace
+        {
+            var sheet = ParseSheet(@"@namespace
     ""http://www.w3.org/1999/xhtml""
     ;");
-			Assert.Equal(1, sheet.Rules.Length);
-		}
+            Assert.Equal(1, sheet.Rules.Length);
+        }
 
-		[Fact]//[Test]
+        [Fact]//[Test]
         public void StyleSheetNamespace()
-		{
-			var sheet = ParseSheet(@"@namespace ""http://www.w3.org/1999/xhtml"";
+        {
+            var sheet = ParseSheet(@"@namespace ""http://www.w3.org/1999/xhtml"";
 @namespace svg ""http://www.w3.org/2000/svg"";");
-			Assert.Equal(2, sheet.Rules.Length);
-		}
+            Assert.Equal(2, sheet.Rules.Length);
+        }
 
-		[Fact]//[Test]
+        [Fact]//[Test]
         public void StyleSheetNoSemi()
-		{
-			var sheet = ParseSheet(@"
+        {
+            var sheet = ParseSheet(@"
 tobi loki jane {
   are: 'all';
   the-species: called ""ferrets""
 }");
-			Assert.Equal(1, sheet.Rules.Length);
+            Assert.Equal(1, sheet.Rules.Length);
 
-			foreach (var rule in sheet.Rules)
-			{
-				Assert.Equal(@"tobi loki jane", ((StyleRule)rule).SelectorText);
-				Assert.Equal(@"""all""", ((StyleRule)rule).Style["are"]);
-				Assert.Equal(@"called ""ferrets""", ((StyleRule)rule).Style["the-species"]);
-			}
-		}
+            foreach (var rule in sheet.Rules)
+            {
+                Assert.Equal(@"tobi loki jane", ((StyleRule)rule).SelectorText);
+                Assert.Equal(@"""all""", ((StyleRule)rule).Style["are"]);
+                Assert.Equal(@"called ""ferrets""", ((StyleRule)rule).Style["the-species"]);
+            }
+        }
 
-		[Fact]//[Test]
+        [Fact]//[Test]
         public void StyleSheetPageLinebreak()
-		{
-			var sheet = ParseSheet(@"@page
+        {
+            var sheet = ParseSheet(@"@page
     toc
     {
         color: black;
     }");
-			Assert.Equal(1, sheet.Rules.Length);
-		}
+            Assert.Equal(1, sheet.Rules.Length);
+        }
 
-		[Fact]//[Test]
+        [Fact]//[Test]
         public void StyleSheetPagedMedia()
-		{
-			var sheet = ParseSheet(@"/* toc above */
+        {
+            var sheet = ParseSheet(@"/* toc above */
 @page toc, index:blank {
   /* toc inside */
   color: green;
@@ -852,7 +890,7 @@ tobi loki jane {
 @page :left {
   margin-left: 5cm;
 }");
-			Assert.Equal(3, sheet.Rules.Length);
+            Assert.Equal(3, sheet.Rules.Length);
 
             var page1 = sheet.Rules[0] as PageRule;
             var page2 = sheet.Rules[1] as PageRule;
@@ -867,64 +905,64 @@ tobi loki jane {
 
             Assert.Equal(1, page3.Style.Length);
             Assert.Equal("5cm", page3.Style["margin-left"]);
-		}
+        }
 
-		[Fact]//[Test]
+        [Fact]//[Test]
         public void StyleSheetProps()
-		{
-			var sheet = ParseSheet(@"
+        {
+            var sheet = ParseSheet(@"
 tobi loki jane {
   are: 'all';
   the-species: called ""ferrets"";
   *even: 'ie crap';
 }");
-			Assert.Equal(1, sheet.Rules.Length);
+            Assert.Equal(1, sheet.Rules.Length);
 
             Assert.Equal(@"tobi loki jane", ((StyleRule)sheet.Rules[0]).SelectorText);
             Assert.Equal(@"""all""", ((StyleRule)sheet.Rules[0]).Style["are"]);
             Assert.Equal(@"called ""ferrets""", ((StyleRule)sheet.Rules[0]).Style["the-species"]);
             Assert.Equal(@"""ie crap""", ((StyleRule)sheet.Rules[0]).Style["*even"]);
-		}
+        }
 
-		[Fact]//[Test]
+        [Fact]//[Test]
         public void StyleSheetQuoteEscape()
-		{
-			var sheet = ParseSheet(@"p[qwe=""a\"",b""] { color: red }
+        {
+            var sheet = ParseSheet(@"p[qwe=""a\"",b""] { color: red }
 ");
-			Assert.Equal(1, sheet.Rules.Length);
+            Assert.Equal(1, sheet.Rules.Length);
 
             Assert.Equal(@"p[qwe=""a\"",b""]", ((StyleRule)sheet.Rules[0]).SelectorText);
             Assert.Equal(@"red", ((StyleRule)sheet.Rules[0]).Style["color"]);
-		}
+        }
 
-		[Fact]//[Test]
+        [Fact]//[Test]
         public void StyleSheetQuoted()
-		{
-			var sheet = ParseSheet(@"body {
+        {
+            var sheet = ParseSheet(@"body {
   background: url('some;stuff;here') 50% 50% no-repeat;
 }");
-			Assert.Equal(1, sheet.Rules.Length);
+            Assert.Equal(1, sheet.Rules.Length);
 
             Assert.Equal(@"body", ((StyleRule)sheet.Rules[0]).SelectorText);
             Assert.Equal(@"url(""some;stuff;here"") 50% 50% no-repeat", ((StyleRule)sheet.Rules[0]).Style["background"]);
-		}
+        }
 
-		[Fact]//[Test]
+        [Fact]//[Test]
         public void StyleSheetRule()
-		{
-			var sheet = ParseSheet(@"foo {
+        {
+            var sheet = ParseSheet(@"foo {
   bar: 'baz';
 }");
-			Assert.Equal(1, sheet.Rules.Length);
+            Assert.Equal(1, sheet.Rules.Length);
 
             Assert.Equal(@"foo", ((StyleRule)sheet.Rules[0]).SelectorText);
             Assert.Equal(@"""baz""", ((StyleRule)sheet.Rules[0]).Style["bar"]);
-		}
+        }
 
-		[Fact]//[Test]
+        [Fact]//[Test]
         public void StyleSheetRules()
-		{
-			var sheet = ParseSheet(@"tobi {
+        {
+            var sheet = ParseSheet(@"tobi {
   name: 'tobi';
   age: 2;
 }
@@ -933,7 +971,7 @@ loki {
   name: 'loki';
   age: 1;
 }");
-			Assert.Equal(2, sheet.Rules.Length);
+            Assert.Equal(2, sheet.Rules.Length);
 
             Assert.Equal(@"tobi", ((StyleRule)sheet.Rules[0]).SelectorText);
             Assert.Equal(@"""tobi""", ((StyleRule)sheet.Rules[0]).Style["name"]);
@@ -942,37 +980,37 @@ loki {
             Assert.Equal(@"loki", ((StyleRule)sheet.Rules[1]).SelectorText);
             Assert.Equal(@"""loki""", ((StyleRule)sheet.Rules[1]).Style["name"]);
             Assert.Equal(@"1", ((StyleRule)sheet.Rules[1]).Style["age"]);
-		}
+        }
 
-		[Fact]//[Test]
+        [Fact]//[Test]
         public void StyleSheetSelectors()
-		{
-			var sheet = ParseSheet(@"foo,
+        {
+            var sheet = ParseSheet(@"foo,
 bar,
 baz {
   color: 'black';
 }");
-			Assert.Equal(1, sheet.Rules.Length);
+            Assert.Equal(1, sheet.Rules.Length);
 
             Assert.Equal(@"foo,bar,baz", ((StyleRule)sheet.Rules[0]).SelectorText);
             Assert.Equal(@"""black""", ((StyleRule)sheet.Rules[0]).Style["color"]);
-		}
+        }
 
-		[Fact]//[Test]
+        [Fact]//[Test]
         public void StyleSheetSupportsLinebreak()
-		{
-			var sheet = ParseSheet(@"@supports
+        {
+            var sheet = ParseSheet(@"@supports
     (display: flex)
     {
         .test { display: flex; }
     }");
-			Assert.Equal(1, sheet.Rules.Length);
-		}
+            Assert.Equal(1, sheet.Rules.Length);
+        }
 
-		[Fact]//[Test]
+        [Fact]//[Test]
         public void StyleSheetSupports()
-		{
-			var sheet = ParseSheet(@"@supports (display: flex) or (display: box) {
+        {
+            var sheet = ParseSheet(@"@supports (display: flex) or (display: box) {
   /* flex above */
   .flex {
     /* flex inside */
@@ -984,27 +1022,27 @@ baz {
     something: else;
   }
 }");
-			Assert.Equal(1, sheet.Rules.Length);
-		}
+            Assert.Equal(1, sheet.Rules.Length);
+        }
 
-		[Fact]//[Test]
+        [Fact]//[Test]
         public void StyleSheetWtf()
-		{
-			var sheet = ParseSheet(@".wtf {
+        {
+            var sheet = ParseSheet(@".wtf {
   *overflow-x: hidden;
   //max-height: 110px;
   #height: 18px;
 }");
-			Assert.Equal(1, sheet.Rules.Length);
+            Assert.Equal(1, sheet.Rules.Length);
 
-			foreach (var rule in sheet.Rules)
-			{
-				Assert.Equal(@".wtf", ((StyleRule)rule).SelectorText);
-				Assert.Equal(@"hidden", ((StyleRule)rule).Style["*overflow-x"]);
-				Assert.Equal(@"110px", ((StyleRule)rule).Style["//max-height"]);
-				Assert.Equal(@"18px", ((StyleRule)rule).Style["#height"]);
-			}
-		}
+            foreach (var rule in sheet.Rules)
+            {
+                Assert.Equal(@".wtf", ((StyleRule)rule).SelectorText);
+                Assert.Equal(@"hidden", ((StyleRule)rule).Style["*overflow-x"]);
+                Assert.Equal(@"110px", ((StyleRule)rule).Style["//max-height"]);
+                Assert.Equal(@"18px", ((StyleRule)rule).Style["#height"]);
+            }
+        }
 
         [Fact]
         public void StyleSheetUnicodeEscapeLiteral()
@@ -1034,7 +1072,7 @@ lack; }");
         [Fact]
         public void StyleSheetWithInitialCommentShouldWorkWithTriviaActive()
         {
-            var parser = new StylesheetParser(preserveComments:true);
+            var parser = new StylesheetParser(preserveComments: true);
             var document = parser.Parse(@"/* Comment at the start */ body { font-size: 10pt; }");
             var comment = document.Children.First();
 

@@ -1,11 +1,15 @@
 ﻿using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 
 namespace ExCSS
 {
-    internal sealed class ComplexSelector : StylesheetNode, ISelector
+    public sealed class ComplexSelector : StylesheetNode, ISelector
     {
         private readonly List<CombinatorSelector> _selectors;
+
+        public IEnumerable<ISelector> Selectors 
+            => _selectors.Select(c => c.Selector);
 
         public ComplexSelector()
         {
